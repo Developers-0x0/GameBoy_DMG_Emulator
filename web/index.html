@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Game Boy DMG-01 Emulator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        
+        .container {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        #gameboy-canvas {
+            border: 2px solid #333;
+            background-color: #9bbc0f;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            width: 640px;
+            height: 576px;
+        }
+        
+        .controls {
+            margin: 20px 0;
+        }
+        
+        input[type="file"] {
+            margin: 10px;
+            padding: 10px;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            max-width: 600px;
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+        }
+        
+        .key-mapping {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .key-mapping div {
+            padding: 5px;
+            background-color: #e9e9e9;
+            border-radius: 3px;
+        }
+        
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .status.info {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Game Boy DMG-01 Emulator</h1>
+        
+        <div class="status" id="status">
+            Select a Game Boy ROM file to start playing
+        </div>
+        
+        <div class="controls">
+            <input type="file" id="rom-file" accept=".gb,.gbc" />
+            <button id="start-btn" disabled>Start Game</button>
+            <button id="pause-btn" disabled>Pause</button>
+            <button id="reset-btn" disabled>Reset</button>
+        </div>
+        
+        <canvas id="gameboy-canvas" width="160" height="144"></canvas>
+        
+        <div class="instructions">
+            <h3>Controls</h3>
+            <div class="key-mapping">
+                <div><strong>Arrow Keys:</strong> D-Pad</div>
+                <div><strong>Z:</strong> A Button</div>
+                <div><strong>X:</strong> B Button</div>
+                <div><strong>Enter:</strong> Start</div>
+                <div><strong>Space:</strong> Select</div>
+                <div><strong>R:</strong> Reset Game</div>
+            </div>
+            
+            <h3>Instructions</h3>
+            <ol>
+                <li>Select a Game Boy ROM file (.gb or .gbc)</li>
+                <li>Click "Start Game" to begin emulation</li>
+                <li>Use the keyboard controls to play</li>
+                <li>Use "Pause" to pause/resume the game</li>
+                <li>Use "Reset" to restart the current game</li>
+            </ol>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { WebGameBoy } from './pkg/gameboy_dmg_emulator.js';
+
+        let gameboy = null;
+        let animationId = null;
+        let isRunning = false;
+        
+        const canvas = document.getElementById('gameboy-canvas');
+        const romFile = document.getElementById('rom-file');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const status = document.getElementById('status');
+        
+        function updateStatus(message, type = 'info') {
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+        
+        function gameLoop() {
+            if (!isRunning || !gameboy) return;
+            
+            try {
+                gameboy.run_frame();
+                gameboy.render();
+                animationId = requestAnimationFrame(gameLoop);
+            } catch (error) {
+                console.error('Game loop error:', error);
+                updateStatus(`Error: ${error.message}`, 'error');
+                stopGame();
+            }
+        }
+        
+        function startGame() {
+            if (!gameboy) return;
+            
+            isRunning = true;
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            resetBtn.disabled = false;
+            updateStatus('Game running');
+            gameLoop();
+        }
+        
+        function pauseGame() {
+            if (isRunning) {
+                isRunning = false;
+                pauseBtn.textContent = 'Resume';
+                updateStatus('Game paused');
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+            } else {
+                isRunning = true;
+                pauseBtn.textContent = 'Pause';
+                updateStatus('Game running');
+                gameLoop();
+            }
+        }
+        
+        function stopGame() {
+            isRunning = false;
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            resetBtn.disabled = true;
+            pauseBtn.textContent = 'Pause';
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+        }
+        
+        function resetGame() {
+            stopGame();
+            // TODO: Implement reset functionality
+            updateStatus('Game reset');
+        }
+        
+        // Event listeners
+        romFile.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            updateStatus('Loading ROM...');
+            
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const romData = new Uint8Array(arrayBuffer);
+                
+                gameboy = new WebGameBoy();
+                gameboy.init('gameboy-canvas');
+                gameboy.load_rom(romData);
+                
+                startBtn.disabled = false;
+                updateStatus(`ROM loaded: ${file.name}`);
+            } catch (error) {
+                console.error('ROM loading error:', error);
+                updateStatus(`Failed to load ROM: ${error.message}`, 'error');
+                gameboy = null;
+                startBtn.disabled = true;
+            }
+        });
+        
+        startBtn.addEventListener('click', startGame);
+        pauseBtn.addEventListener('click', pauseGame);
+        resetBtn.addEventListener('click', resetGame);
+        
+        // Keyboard input
+        document.addEventListener('keydown', (event) => {
+            if (!gameboy) return;
+            
+            switch (event.code) {
+                case 'ArrowUp':
+                case 'ArrowDown':
+                case 'ArrowLeft':
+                case 'ArrowRight':
+                case 'KeyZ':
+                case 'KeyX':
+                case 'Enter':
+                case 'Space':
+                    event.preventDefault();
+                    gameboy.key_down(event.keyCode);
+                    break;
+                case 'KeyR':
+                    event.preventDefault();
+                    resetGame();
+                    break;
+            }
+        });
+        
+        document.addEventListener('keyup', (event) => {
+            if (!gameboy) return;
+            
+            switch (event.code) {
+                case 'ArrowUp':
+                case 'ArrowDown':
+                case 'ArrowLeft':
+                case 'ArrowRight':
+                case 'KeyZ':
+                case 'KeyX':
+                case 'Enter':
+                case 'Space':
+                    event.preventDefault();
+                    gameboy.key_up(event.keyCode);
+                    break;
+            }
+        });
+        
+        // Initialize WebAssembly
+        async function initWasm() {
+            try {
+                await init();
+                updateStatus('Emulator ready - select a ROM file');
+            } catch (error) {
+                console.error('WASM initialization error:', error);
+                updateStatus('Failed to initialize emulator', 'error');
+            }
+        }
+        
+        initWasm();
+    </script>
+</body>
+</html>

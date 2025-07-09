@@ -1,0 +1,63 @@
+[package]
+name = "gameboy_dmg_emulator"
+version = "0.1.0"
+edition = "2021"
+authors = ["Developers-0x0"]
+description = "A Game Boy DMG-01 emulator with WebAssembly support"
+license = "MIT"
+repository = "https://github.com/Developers-0x0/GameBoy_DMG_Emulator"
+readme = "README.md"
+keywords = ["gameboy", "emulator", "wasm", "gaming"]
+categories = ["games", "emulators", "wasm"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Core dependencies
+byteorder = "1.5"
+bitflags = "2.4"
+log = "0.4"
+env_logger = "0.10"
+thiserror = "1.0"
+
+# Platform-specific dependencies
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+web-sys = "0.3"
+js-sys = "0.3"
+wasm-bindgen-futures = "0.4"
+console_error_panic_hook = "0.1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# Optional native dependencies - enable via features
+sdl2 = { version = "0.35", features = ["bundled"], optional = true }
+gl = { version = "0.14", optional = true }
+glutin = { version = "0.30", optional = true }
+winit = { version = "0.28", optional = true }
+
+[dev-dependencies]
+criterion = "0.5"
+proptest = "1.4"
+wasm-bindgen-test = "0.3"
+
+[features]
+default = []
+sdl2 = ["dep:sdl2"]
+opengl = ["dep:gl", "dep:glutin", "dep:winit"]
+
+[[bench]]
+name = "emulator_benchmark"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.release.package."*"]
+opt-level = 3
+
+# WebAssembly-specific optimizations
+[package.metadata.wasm-pack.profile.release]
+wee_alloc = false
